@@ -16,3 +16,9 @@ pub enum AllError<E> {
     UnexpectedEof,
     Io(E),
 }
+
+impl<E> From<E> for AllError<E> {
+    fn from(e: E) -> Self {
+        AllError::Io(e)
+    }
+}
