@@ -34,6 +34,7 @@ pub trait Read {
 impl<T: Read> Read for &'_ mut T {
     type Error = T::Error;
 
+    #[inline]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         Read::read(*self, buf)
     }
@@ -154,6 +155,7 @@ mod std_impl {
     pub struct StdCompat<T: ?Sized>(pub T);
 
     impl<T: ?Sized> StdCompat<T> {
+        #[inline]
         pub fn inner_mut(&mut self) -> &mut T {
             &mut self.0
         }
@@ -162,6 +164,7 @@ mod std_impl {
     impl<T: ?Sized + Read> super::Read for StdCompat<T> {
         type Error = Error;
 
+        #[inline]
         fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
             self.inner_mut().read(buf)
         }
@@ -178,6 +181,7 @@ mod std_impl {
             }
         }
 
+        #[inline]
         fn flush(&mut self) -> Result<(), Self::Error> {
             self.inner_mut().flush()
         }
