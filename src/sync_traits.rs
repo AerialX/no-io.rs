@@ -1,9 +1,8 @@
-use core::fmt;
+use core::{fmt, cmp, convert};
 use super::AllError;
 
 pub enum WriteFmtError<E> {
     FormatterError,
-    // TODO: embed AllError::WriteZero here?
     Io(E),
 }
 
@@ -37,6 +36,19 @@ impl<T: Read> Read for &'_ mut T {
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         Read::read(*self, buf)
+    }
+}
+
+impl Read for &'_ [u8] {
+    type Error = convert::Infallible;
+
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        let len = cmp::min(buf.len(), self.len());
+        unsafe {
+            buf.get_unchecked_mut(..len).copy_from_slice(self.get_unchecked(..len));
+            *self = self.get_unchecked(len..);
+        }
+        Ok(len)
     }
 }
 
@@ -90,6 +102,46 @@ pub trait Write {
                 None => WriteFmtError::FormatterError,
             }),
         }
+    }
+}
+
+impl<T: Write> Write for &'_ mut T {
+    type Error = T::Error;
+
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+        Write::write(*self, buf)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        Write::flush(*self)
+    }
+}
+
+impl Write for &'_ mut [u8] {
+    type Error = AllError<convert::Infallible>;
+
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+        let len = cmp::min(buf.len(), self.len());
+        if len == 0 {
+            match buf.is_empty() {
+                true => Ok(0),
+                false => Err(AllError::UnexpectedEof),
+            }
+        } else {
+            let this = core::mem::replace(self, &mut []);
+            unsafe {
+                this.get_unchecked_mut(..len).copy_from_slice(buf.get_unchecked(..len));
+                *self = this.get_unchecked_mut(len..);
+            }
+            Ok(len)
+        }
+    }
+
+    #[inline]
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 
