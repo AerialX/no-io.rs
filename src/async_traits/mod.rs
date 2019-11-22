@@ -166,3 +166,50 @@ pub use write_all::*;
 
 mod read_write_all;
 pub use read_write_all::*;
+
+trait BufferSlice {
+    fn len(&self) -> usize;
+    unsafe fn resize_from(&mut self, count: usize);
+}
+
+impl BufferSlice for &'_ mut [u8] {
+    fn len(&self) -> usize {
+        <[u8]>::len(self)
+    }
+
+    unsafe fn resize_from(&mut self, count: usize) {
+        let buffer = core::mem::replace(self, &mut []);
+        *self = buffer.get_unchecked_mut(count..);
+    }
+}
+
+impl BufferSlice for &'_ [u8] {
+    fn len(&self) -> usize {
+        <[u8]>::len(self)
+    }
+
+    unsafe fn resize_from(&mut self, count: usize) {
+        *self = self.get_unchecked(count..);
+    }
+}
+
+fn all_poll<B: BufferSlice>(res: Poll<usize>, cx: &mut Context, buffer: &mut B) -> Poll<Result<(), ()>> {
+    match res {
+        Poll::Pending => Poll::Pending,
+        Poll::Ready(count) if count >= buffer.len() => {
+            debug_assert_eq!(count, buffer.len());
+            Poll::Ready(Ok(()))
+        },
+        Poll::Ready(0) => Poll::Ready(Err(())),
+        Poll::Ready(count) => {
+            unsafe {
+                debug_assert!(count <= buffer.len());
+                buffer.resize_from(count);
+            }
+
+            // TODO: alternatively tail-recurse into poll
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        },
+    }
+}
