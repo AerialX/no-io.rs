@@ -22,6 +22,8 @@ pub trait AsyncSynchronous {
     fn poll_read_write(self: Pin<&mut Self>, context: &mut Context, buffer: &mut [u8]) -> Poll<Result<usize, Self::Error>>;
 }
 
+// TODO consider compat structs with pinned reference for borrowing rather than owning?
+
 #[cfg(feature = "tokio-io")]
 mod tokio_impl {
     use core::task::{Context, Poll};
