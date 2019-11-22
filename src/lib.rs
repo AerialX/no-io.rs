@@ -18,6 +18,7 @@ pub enum AllError<E> {
 }
 
 impl<E> From<E> for AllError<E> {
+    #[inline]
     fn from(e: E) -> Self {
         AllError::Io(e)
     }

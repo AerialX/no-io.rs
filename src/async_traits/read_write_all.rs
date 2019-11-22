@@ -4,6 +4,7 @@ use core::pin::Pin;
 use crate::AllError;
 use super::all_poll;
 
+#[inline]
 pub fn read_write_all<'a, 'b, T>(this: Pin<&'a mut T>, buffer: &'b mut [u8]) -> ReadWriteAll<'a, 'b, T> {
     ReadWriteAll {
         this,

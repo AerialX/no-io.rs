@@ -34,6 +34,7 @@ mod tokio_impl {
     pub struct TokioCompat<T: ?Sized>(pub T);
 
     impl<T: ?Sized> TokioCompat<T> {
+        #[inline]
         pub fn inner_pin(self: Pin<&mut Self>) -> Pin<&mut T> {
             unsafe {
                 let this = self.get_unchecked_mut();
@@ -45,12 +46,14 @@ mod tokio_impl {
     impl<T: ?Sized + AsyncRead> super::AsyncRead for TokioCompat<T> {
         type Error = Error;
 
+        #[inline]
         fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
             self.inner_pin().poll_read(cx, buf)
         }
     }
 
     impl<T: ?Sized + super::AsyncRead<Error=E>, E: Into<Error>> AsyncRead for TokioCompat<T> {
+        #[inline]
         fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Error>> {
             self.inner_pin().poll_read(cx, buf).map_err(Into::into)
         }
@@ -59,28 +62,34 @@ mod tokio_impl {
     impl<T: ?Sized + AsyncWrite> super::AsyncWrite for TokioCompat<T> {
         type Error = Error;
 
+        #[inline]
         fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
             self.inner_pin().poll_write(cx, buf)
         }
 
+        #[inline]
         fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
             self.inner_pin().poll_flush(cx)
         }
 
+        #[inline]
         fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
             self.inner_pin().poll_shutdown(cx)
         }
     }
 
     impl<T: ?Sized + super::AsyncWrite<Error=E>, E: Into<Error>> AsyncWrite for TokioCompat<T> {
+        #[inline]
         fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Error>> {
             self.inner_pin().poll_write(cx, buf).map_err(Into::into)
         }
 
+        #[inline]
         fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
             self.inner_pin().poll_flush(cx).map_err(Into::into)
         }
 
+        #[inline]
         fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
             self.inner_pin().poll_close(cx).map_err(Into::into)
         }
@@ -100,6 +109,7 @@ mod futures_impl {
     pub struct FuturesCompat<T: ?Sized>(pub T);
 
     impl<T: ?Sized> FuturesCompat<T> {
+        #[inline]
         pub fn inner_pin(self: Pin<&mut Self>) -> Pin<&mut T> {
             unsafe {
                 let this = self.get_unchecked_mut();
@@ -111,12 +121,14 @@ mod futures_impl {
     impl<T: ?Sized + AsyncRead> super::AsyncRead for FuturesCompat<T> {
         type Error = Error;
 
+        #[inline]
         fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
             self.inner_pin().poll_read(cx, buf)
         }
     }
 
     impl<T: ?Sized + super::AsyncRead<Error=E>, E: Into<Error>> AsyncRead for FuturesCompat<T> {
+        #[inline]
         fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Error>> {
             self.inner_pin().poll_read(cx, buf).map_err(Into::into)
         }
@@ -125,28 +137,34 @@ mod futures_impl {
     impl<T: ?Sized + AsyncWrite> super::AsyncWrite for FuturesCompat<T> {
         type Error = Error;
 
+        #[inline]
         fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
             self.inner_pin().poll_write(cx, buf)
         }
 
+        #[inline]
         fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
             self.inner_pin().poll_flush(cx)
         }
 
+        #[inline]
         fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
             self.inner_pin().poll_close(cx)
         }
     }
 
     impl<T: ?Sized + super::AsyncWrite<Error=E>, E: Into<Error>> AsyncWrite for FuturesCompat<T> {
+        #[inline]
         fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Error>> {
             self.inner_pin().poll_write(cx, buf).map_err(Into::into)
         }
 
+        #[inline]
         fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
             self.inner_pin().poll_flush(cx).map_err(Into::into)
         }
 
+        #[inline]
         fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
             self.inner_pin().poll_close(cx).map_err(Into::into)
         }
@@ -155,8 +173,6 @@ mod futures_impl {
 
 #[cfg(feature = "futures-io")]
 pub use futures_impl::FuturesCompat;
-
-// TODO these "all" poll impls can be shared to reduce code size
 
 mod read_exact;
 pub use read_exact::*;
@@ -173,10 +189,12 @@ trait BufferSlice {
 }
 
 impl BufferSlice for &'_ mut [u8] {
+    #[inline]
     fn len(&self) -> usize {
         <[u8]>::len(self)
     }
 
+    #[inline]
     unsafe fn resize_from(&mut self, count: usize) {
         let buffer = core::mem::replace(self, &mut []);
         *self = buffer.get_unchecked_mut(count..);
@@ -184,10 +202,12 @@ impl BufferSlice for &'_ mut [u8] {
 }
 
 impl BufferSlice for &'_ [u8] {
+    #[inline]
     fn len(&self) -> usize {
         <[u8]>::len(self)
     }
 
+    #[inline]
     unsafe fn resize_from(&mut self, count: usize) {
         *self = self.get_unchecked(count..);
     }
