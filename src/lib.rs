@@ -12,7 +12,6 @@ pub use async_traits::*;
 
 #[derive(Debug, Copy, Clone)]
 pub enum AllError<E> {
-    /// aka WriteZero?
     UnexpectedEof,
     Io(E),
 }

@@ -233,3 +233,15 @@ fn all_poll<B: BufferSlice>(res: Poll<usize>, cx: &mut Context, buffer: &mut B) 
         },
     }
 }
+
+#[inline]
+fn all_poll_write<B: BufferSlice>(res: Poll<usize>, cx: &mut Context, buffer: &mut B) -> Poll<()> {
+    match all_poll(res, cx, buffer) {
+        Poll::Pending => Poll::Pending,
+        Poll::Ready(res) => match res {
+            #[cfg(debug_assertions)]
+            Err(()) => panic!("Invalid write length"),
+            _ => Poll::Ready(()),
+        },
+    }
+}
