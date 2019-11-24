@@ -1,5 +1,6 @@
 use core::convert;
 use core::task::{Context, Poll};
+use core::ops::DerefMut;
 use core::pin::Pin;
 
 pub trait AsyncRead {
@@ -50,6 +51,62 @@ impl AsyncWrite for &'_ mut [u8] {
     #[inline]
     fn poll_close(self: Pin<&mut Self>, _: &mut Context) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
+    }
+}
+
+impl<T: AsyncRead + Unpin> AsyncRead for &'_ mut T {
+    type Error = T::Error;
+
+    #[inline]
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
+        Pin::new(&mut **self).poll_read(cx, buf)
+    }
+}
+
+impl<T: AsyncWrite + Unpin> AsyncWrite for &'_ mut T {
+    type Error = T::Error;
+
+    #[inline]
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
+        Pin::new(&mut **self).poll_write(cx, buf)
+    }
+
+    #[inline]
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut **self).poll_flush(cx)
+    }
+
+    #[inline]
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut **self).poll_close(cx)
+    }
+}
+
+impl<P: DerefMut<Target=T> + Unpin, T: AsyncRead> AsyncRead for Pin<P> {
+    type Error = T::Error;
+
+    #[inline]
+    fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
+        self.get_mut().as_mut().poll_read(cx, buf)
+    }
+}
+
+impl<P: DerefMut<Target=T> + Unpin, T: AsyncWrite> AsyncWrite for Pin<P> {
+    type Error = T::Error;
+
+    #[inline]
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
+        self.get_mut().as_mut().poll_write(cx, buf)
+    }
+
+    #[inline]
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.get_mut().as_mut().poll_flush(cx)
+    }
+
+    #[inline]
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.get_mut().as_mut().poll_close(cx)
     }
 }
 
