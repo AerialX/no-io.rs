@@ -31,6 +31,29 @@ pub struct Sink;
 #[derive(Debug, Copy, Clone)]
 pub struct Empty;
 
+#[derive(Debug, Copy, Clone)]
+pub struct Take<S> {
+    stream: S,
+    limit: usize,
+}
+
+impl<S> Take<S> {
+    pub const fn new(stream: S, limit: usize) -> Self {
+        Self {
+            stream,
+            limit,
+        }
+    }
+
+    pub fn limit(&self) -> usize {
+        self.limit
+    }
+
+    pub fn set_limit(&mut self, limit: usize) {
+        self.limit = limit;
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum AllError<E> {
     UnexpectedEof,

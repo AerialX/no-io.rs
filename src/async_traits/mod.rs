@@ -2,6 +2,7 @@ use core::convert::Infallible;
 use core::task::{Context, Poll};
 use core::ops::DerefMut;
 use core::pin::Pin;
+use crate::{Take, AllError};
 
 pub(crate) mod prelude {
     pub use super::{
@@ -43,7 +44,7 @@ impl AsyncRead for &'_ [u8] {
 }
 
 impl AsyncWrite for &'_ mut [u8] {
-    type Error = crate::AllError<Infallible>;
+    type Error = AllError<Infallible>;
 
     #[inline]
     fn poll_write(self: Pin<&mut Self>, _: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
@@ -143,6 +144,64 @@ impl AsyncRead for crate::Empty {
     #[inline]
     fn poll_read(self: Pin<&mut Self>, _: &mut Context, _: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
         Poll::Ready(Ok(0))
+    }
+}
+
+impl<S: AsyncRead> AsyncRead for Take<S> {
+    type Error = S::Error;
+
+    fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
+        let s = unsafe { self.get_unchecked_mut() };
+        let stream = unsafe { Pin::new_unchecked(&mut s.stream) };
+
+        let buf = match buf.get_mut(..s.limit) {
+            Some(buf) => buf,
+            None => buf,
+        };
+        let res = stream.poll_read(cx, buf);
+        if let Poll::Ready(Ok(len)) = &res {
+            s.limit -= len;
+        }
+        res
+    }
+}
+
+impl<S: AsyncWrite> AsyncWrite for Take<S> {
+    type Error = AllError<S::Error>;
+
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
+        let s = unsafe { self.get_unchecked_mut() };
+        let stream = unsafe { Pin::new_unchecked(&mut s.stream) };
+
+        if s.limit == 0 && !buf.is_empty() {
+            return Poll::Ready(Err(AllError::UnexpectedEof))
+        }
+
+        let buf = match buf.get(..s.limit) {
+            Some(buf) => buf,
+            None => buf,
+        };
+        let res = stream.poll_write(cx, buf);
+        if let Poll::Ready(Ok(len)) = &res {
+            s.limit -= len;
+        }
+        res.map_err(From::from)
+    }
+
+    #[inline]
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = unsafe { self.get_unchecked_mut() };
+        let stream = unsafe { Pin::new_unchecked(&mut s.stream) };
+
+        stream.poll_flush(cx).map_err(From::from)
+    }
+
+    #[inline]
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = unsafe { self.get_unchecked_mut() };
+        let stream = unsafe { Pin::new_unchecked(&mut s.stream) };
+
+        stream.poll_close(cx).map_err(From::from)
     }
 }
 
@@ -307,29 +366,48 @@ pub use write_all::*;
 mod read_write_all;
 pub use read_write_all::*;
 
-pub trait AsyncReadExt {
+mod copy;
+pub use copy::*;
+
+pub trait AsyncReadExt: AsyncRead {
     fn read_exact<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b mut [u8]) -> AsyncReadExact<'a, 'b, Self> {
         AsyncReadExact {
             this: self,
             buffer,
         }
     }
+
+    fn copy_to<'a, 'b, W: AsyncWrite>(self: Pin<&'a mut Self>, write: Pin<&'b mut W>) -> AsyncCopy<'a, 'b, Self, W, Self::Error> {
+        AsyncCopy::new(self, write)
+    }
+
+    fn take(self, limit: usize) -> Take<Self> where Self: Sized {
+        Take::new(self, limit)
+    }
 }
 
 impl<T: AsyncRead> AsyncReadExt for T { }
 
-pub trait AsyncWriteExt {
+pub trait AsyncWriteExt: AsyncWrite {
     fn write_all<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b [u8]) -> AsyncWriteAll<'a, 'b, Self> {
         AsyncWriteAll {
             this: self,
             buffer,
         }
     }
+
+    fn copy_from<'a, 'b, R: AsyncRead>(self: Pin<&'a mut Self>, read: Pin<&'b mut R>) -> AsyncCopy<'b, 'a, R, Self, Self::Error> {
+        AsyncCopy::new(read, self)
+    }
+
+    fn take(self, limit: usize) -> Take<Self> where Self: Sized {
+        Take::new(self, limit)
+    }
 }
 
 impl<T: AsyncWrite> AsyncWriteExt for T { }
 
-pub trait AsyncSynchronousExt {
+pub trait AsyncSynchronousExt: AsyncSynchronous {
     fn read_write_all<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b mut [u8]) -> AsyncReadWriteAll<'a, 'b, Self> {
         AsyncReadWriteAll {
             this: self,

@@ -1,6 +1,6 @@
 use core::fmt;
 use core::convert::Infallible;
-use super::AllError;
+use super::{AllError, Take};
 
 pub(crate) mod prelude {
     pub use super::{Read, Write};
@@ -33,6 +33,10 @@ pub trait Read {
         } else {
             Ok(())
         }
+    }
+
+    fn take(self, limit: usize) -> Take<Self> where Self: Sized {
+        Take::new(self, limit)
     }
 }
 
@@ -105,6 +109,10 @@ pub trait Write {
             }),
         }
     }
+
+    fn take(self, limit: usize) -> Take<Self> where Self: Sized {
+        Take::new(self, limit)
+    }
 }
 
 impl<T: Write> Write for &'_ mut T {
@@ -155,6 +163,46 @@ impl Read for crate::Empty {
     #[inline]
     fn read(&mut self, _: &mut [u8]) -> Result<usize, Self::Error> {
         Ok(0)
+    }
+}
+
+impl<S: Read> Read for Take<S> {
+    type Error = S::Error;
+
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        let buf = match buf.get_mut(..self.limit) {
+            Some(buf) => buf,
+            None => buf,
+        };
+        let res = self.stream.read(buf);
+        if let Ok(len) = &res {
+            self.limit -= len;
+        }
+        res
+    }
+}
+
+impl<S: Write> Write for Take<S> {
+    type Error = AllError<S::Error>;
+
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+        if self.limit == 0 && !buf.is_empty() {
+            return Err(AllError::UnexpectedEof)
+        }
+
+        let buf = match buf.get(..self.limit) {
+            Some(buf) => buf,
+            None => buf,
+        };
+        let res = self.stream.write(buf);
+        if let Ok(len) = &res {
+            self.limit -= len;
+        }
+        res.map_err(From::from)
+    }
+
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        self.stream.flush().map_err(From::from)
     }
 }
 
