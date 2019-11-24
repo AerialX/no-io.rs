@@ -63,7 +63,7 @@ impl AsyncWrite for &'_ mut [u8] {
     }
 }
 
-impl<T: AsyncRead + Unpin> AsyncRead for &'_ mut T {
+impl<T: ?Sized + AsyncRead + Unpin> AsyncRead for &'_ mut T {
     type Error = T::Error;
 
     #[inline]
@@ -72,7 +72,7 @@ impl<T: AsyncRead + Unpin> AsyncRead for &'_ mut T {
     }
 }
 
-impl<T: AsyncWrite + Unpin> AsyncWrite for &'_ mut T {
+impl<T: ?Sized + AsyncWrite + Unpin> AsyncWrite for &'_ mut T {
     type Error = T::Error;
 
     #[inline]
@@ -91,7 +91,7 @@ impl<T: AsyncWrite + Unpin> AsyncWrite for &'_ mut T {
     }
 }
 
-impl<P: DerefMut<Target=T> + Unpin, T: AsyncRead> AsyncRead for Pin<P> {
+impl<P: DerefMut<Target=T> + Unpin, T: ?Sized + AsyncRead> AsyncRead for Pin<P> {
     type Error = T::Error;
 
     #[inline]
@@ -100,7 +100,7 @@ impl<P: DerefMut<Target=T> + Unpin, T: AsyncRead> AsyncRead for Pin<P> {
     }
 }
 
-impl<P: DerefMut<Target=T> + Unpin, T: AsyncWrite> AsyncWrite for Pin<P> {
+impl<P: DerefMut<Target=T> + Unpin, T: ?Sized + AsyncWrite> AsyncWrite for Pin<P> {
     type Error = T::Error;
 
     #[inline]
@@ -377,7 +377,7 @@ pub trait AsyncReadExt: AsyncRead {
         }
     }
 
-    fn copy_to<'a, 'b, W: AsyncWrite>(self: Pin<&'a mut Self>, write: Pin<&'b mut W>) -> AsyncCopy<'a, 'b, Self, W, Self::Error> {
+    fn copy_to<'a, 'b, W: ?Sized + AsyncWrite>(self: Pin<&'a mut Self>, write: Pin<&'b mut W>) -> AsyncCopy<'a, 'b, Self, W, Self::Error> {
         AsyncCopy::new(self, write)
     }
 
@@ -386,7 +386,7 @@ pub trait AsyncReadExt: AsyncRead {
     }
 }
 
-impl<T: AsyncRead> AsyncReadExt for T { }
+impl<T: ?Sized + AsyncRead> AsyncReadExt for T { }
 
 pub trait AsyncWriteExt: AsyncWrite {
     fn write_all<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b [u8]) -> AsyncWriteAll<'a, 'b, Self> {
@@ -396,7 +396,7 @@ pub trait AsyncWriteExt: AsyncWrite {
         }
     }
 
-    fn copy_from<'a, 'b, R: AsyncRead>(self: Pin<&'a mut Self>, read: Pin<&'b mut R>) -> AsyncCopy<'b, 'a, R, Self, Self::Error> {
+    fn copy_from<'a, 'b, R: ?Sized + AsyncRead>(self: Pin<&'a mut Self>, read: Pin<&'b mut R>) -> AsyncCopy<'b, 'a, R, Self, Self::Error> {
         AsyncCopy::new(read, self)
     }
 
@@ -405,7 +405,7 @@ pub trait AsyncWriteExt: AsyncWrite {
     }
 }
 
-impl<T: AsyncWrite> AsyncWriteExt for T { }
+impl<T: ?Sized + AsyncWrite> AsyncWriteExt for T { }
 
 pub trait AsyncSynchronousExt: AsyncSynchronous {
     fn read_write_all<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b mut [u8]) -> AsyncReadWriteAll<'a, 'b, Self> {
@@ -416,7 +416,7 @@ pub trait AsyncSynchronousExt: AsyncSynchronous {
     }
 }
 
-impl<T: AsyncSynchronous> AsyncSynchronousExt for T { }
+impl<T: ?Sized + AsyncSynchronous> AsyncSynchronousExt for T { }
 
 trait BufferSlice {
     fn len(&self) -> usize;

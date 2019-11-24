@@ -40,7 +40,7 @@ pub trait Read {
     }
 }
 
-impl<T: Read> Read for &'_ mut T {
+impl<T: ?Sized + Read> Read for &'_ mut T {
     type Error = T::Error;
 
     #[inline]
@@ -115,7 +115,7 @@ pub trait Write {
     }
 }
 
-impl<T: Write> Write for &'_ mut T {
+impl<T: ?Sized + Write> Write for &'_ mut T {
     type Error = T::Error;
 
     #[inline]
