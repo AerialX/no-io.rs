@@ -110,6 +110,25 @@ impl<P: DerefMut<Target=T> + Unpin, T: AsyncWrite> AsyncWrite for Pin<P> {
     }
 }
 
+impl AsyncWrite for crate::Sink {
+    type Error = convert::Infallible;
+
+    #[inline]
+    fn poll_write(self: Pin<&mut Self>, _: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
+        Poll::Ready(Ok(buf.len()))
+    }
+
+    #[inline]
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    #[inline]
+    fn poll_close(self: Pin<&mut Self>, _: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+}
+
 // TODO consider compat structs with pinned reference for borrowing rather than owning?
 
 #[cfg(feature = "tokio-io")]

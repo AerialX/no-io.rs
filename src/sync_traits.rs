@@ -130,6 +130,20 @@ impl Write for &'_ mut [u8] {
     }
 }
 
+impl Write for crate::Sink {
+    type Error = convert::Infallible;
+
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
 // TODO: figure out how to impl std::io traits ughh why is rust so bad
 
 #[cfg(feature = "std")]

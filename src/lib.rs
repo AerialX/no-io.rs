@@ -17,6 +17,9 @@ mod hash_stream;
 #[cfg(feature = "hash-stream")]
 pub use hash_stream::*;
 
+#[derive(Debug, Copy, Clone)]
+pub struct Sink;
+
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum AllError<E> {
     UnexpectedEof,
