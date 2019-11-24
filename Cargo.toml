@@ -16,6 +16,7 @@ unstable = []
 sync = []
 async = []
 std = []
+hash-stream = []
 
 compat-futures = ["std", "async", "futures-io"]
 compat-tokio = ["std", "async", "tokio-io"]

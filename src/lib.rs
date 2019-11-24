@@ -12,6 +12,11 @@ mod async_traits;
 #[cfg(feature = "async")]
 pub use async_traits::*;
 
+#[cfg(feature = "hash-stream")]
+mod hash_stream;
+#[cfg(feature = "hash-stream")]
+pub use hash_stream::*;
+
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum AllError<E> {
     UnexpectedEof,
