@@ -207,12 +207,15 @@ impl<S: AsyncWrite> AsyncWrite for Take<S> {
 
 // TODO consider compat structs with pinned reference for borrowing rather than owning?
 
-#[cfg(feature = "tokio-io")]
+#[cfg(any(feature = "tokio-io", feature = "tokio"))]
 mod tokio_impl {
     use core::task::{Context, Poll};
     use core::pin::Pin;
     use std::io::Error;
+    #[cfg(feature = "tokio-io")]
     use tokio_io::{AsyncRead, AsyncWrite};
+    #[cfg(feature = "tokio")]
+    use tokio::io::{AsyncRead, AsyncWrite};
 
     pub struct TokioCompat<T: ?Sized>(pub T);
 
@@ -279,7 +282,7 @@ mod tokio_impl {
     }
 }
 
-#[cfg(feature = "tokio-io")]
+#[cfg(any(feature = "tokio-io", feature = "tokio"))]
 pub use tokio_impl::TokioCompat;
 
 #[cfg(feature = "futures-io")]
