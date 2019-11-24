@@ -1,4 +1,5 @@
-use core::{fmt, convert};
+use core::fmt;
+use core::convert::Infallible;
 use super::AllError;
 
 pub(crate) mod prelude {
@@ -45,7 +46,7 @@ impl<T: Read> Read for &'_ mut T {
 }
 
 impl Read for &'_ [u8] {
-    type Error = convert::Infallible;
+    type Error = Infallible;
 
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
@@ -121,7 +122,7 @@ impl<T: Write> Write for &'_ mut T {
 }
 
 impl Write for &'_ mut [u8] {
-    type Error = AllError<convert::Infallible>;
+    type Error = AllError<Infallible>;
 
     #[inline]
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
@@ -135,7 +136,7 @@ impl Write for &'_ mut [u8] {
 }
 
 impl Write for crate::Sink {
-    type Error = convert::Infallible;
+    type Error = Infallible;
 
     #[inline]
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
@@ -149,7 +150,7 @@ impl Write for crate::Sink {
 }
 
 impl Read for crate::Empty {
-    type Error = convert::Infallible;
+    type Error = Infallible;
 
     #[inline]
     fn read(&mut self, _: &mut [u8]) -> Result<usize, Self::Error> {
