@@ -4,20 +4,12 @@ use core::pin::Pin;
 use crate::AllError;
 use super::all_poll;
 
-#[inline]
-pub fn read_write_all<'a, 'b, T>(this: Pin<&'a mut T>, buffer: &'b mut [u8]) -> ReadWriteAll<'a, 'b, T> {
-    ReadWriteAll {
-        this,
-        buffer,
-    }
+pub struct AsyncReadWriteAll<'a, 'b, T: ?Sized> {
+    pub(crate) this: Pin<&'a mut T>,
+    pub(crate) buffer: &'b mut [u8],
 }
 
-pub struct ReadWriteAll<'a, 'b, T> {
-    this: Pin<&'a mut T>,
-    buffer: &'b mut [u8],
-}
-
-impl<'a, 'b, T: super::AsyncSynchronous> Future for ReadWriteAll<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized + super::AsyncSynchronous> Future for AsyncReadWriteAll<'a, 'b, T> {
     type Output = Result<(), AllError<T::Error>>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {

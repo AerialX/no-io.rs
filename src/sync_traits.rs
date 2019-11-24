@@ -1,6 +1,10 @@
 use core::{fmt, convert};
 use super::AllError;
 
+pub(crate) mod prelude {
+    pub use super::{Read, Write};
+}
+
 pub enum WriteFmtError<E> {
     FormatterError,
     Io(E),

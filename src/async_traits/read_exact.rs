@@ -4,20 +4,12 @@ use core::pin::Pin;
 use crate::AllError;
 use super::all_poll;
 
-#[inline]
-pub fn read_exact<'a, 'b, T>(this: Pin<&'a mut T>, buffer: &'b mut [u8]) -> ReadExact<'a, 'b, T> {
-    ReadExact {
-        this,
-        buffer,
-    }
+pub struct AsyncReadExact<'a, 'b, T: ?Sized> {
+    pub(crate) this: Pin<&'a mut T>,
+    pub(crate) buffer: &'b mut [u8],
 }
 
-pub struct ReadExact<'a, 'b, T> {
-    this: Pin<&'a mut T>,
-    buffer: &'b mut [u8],
-}
-
-impl<'a, 'b, T: super::AsyncRead> Future for ReadExact<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized + super::AsyncRead> Future for AsyncReadExact<'a, 'b, T> {
     type Output = Result<(), AllError<T::Error>>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {

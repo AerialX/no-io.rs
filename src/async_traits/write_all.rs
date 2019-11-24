@@ -3,20 +3,12 @@ use core::task::{Context, Poll};
 use core::pin::Pin;
 use super::all_poll_write;
 
-#[inline]
-pub fn write_all<'a, 'b, T>(this: Pin<&'a mut T>, buffer: &'b [u8]) -> WriteAll<'a, 'b, T> {
-    WriteAll {
-        this,
-        buffer,
-    }
+pub struct AsyncWriteAll<'a, 'b, T: ?Sized> {
+    pub(crate) this: Pin<&'a mut T>,
+    pub(crate) buffer: &'b [u8],
 }
 
-pub struct WriteAll<'a, 'b, T> {
-    this: Pin<&'a mut T>,
-    buffer: &'b [u8],
-}
-
-impl<'a, 'b, T: super::AsyncWrite> Future for WriteAll<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized + super::AsyncWrite> Future for AsyncWriteAll<'a, 'b, T> {
     type Output = Result<(), T::Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {

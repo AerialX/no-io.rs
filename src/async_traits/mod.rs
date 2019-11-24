@@ -1,7 +1,15 @@
-use core::convert;
+use core::convert::Infallible;
 use core::task::{Context, Poll};
 use core::ops::DerefMut;
 use core::pin::Pin;
+
+pub(crate) mod prelude {
+    pub use super::{
+        AsyncRead, AsyncReadExt,
+        AsyncWrite, AsyncWriteExt,
+        AsyncSynchronous, AsyncSynchronousExt,
+    };
+}
 
 pub trait AsyncRead {
     type Error;
@@ -25,7 +33,7 @@ pub trait AsyncSynchronous {
 }
 
 impl AsyncRead for &'_ [u8] {
-    type Error = convert::Infallible;
+    type Error = Infallible;
 
     #[inline]
     fn poll_read(self: Pin<&mut Self>, _: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
@@ -35,7 +43,7 @@ impl AsyncRead for &'_ [u8] {
 }
 
 impl AsyncWrite for &'_ mut [u8] {
-    type Error = crate::AllError<convert::Infallible>;
+    type Error = crate::AllError<Infallible>;
 
     #[inline]
     fn poll_write(self: Pin<&mut Self>, _: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
@@ -111,7 +119,7 @@ impl<P: DerefMut<Target=T> + Unpin, T: AsyncWrite> AsyncWrite for Pin<P> {
 }
 
 impl AsyncWrite for crate::Sink {
-    type Error = convert::Infallible;
+    type Error = Infallible;
 
     #[inline]
     fn poll_write(self: Pin<&mut Self>, _: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
@@ -289,6 +297,39 @@ pub use write_all::*;
 
 mod read_write_all;
 pub use read_write_all::*;
+
+pub trait AsyncReadExt {
+    fn read_exact<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b mut [u8]) -> AsyncReadExact<'a, 'b, Self> {
+        AsyncReadExact {
+            this: self,
+            buffer,
+        }
+    }
+}
+
+impl<T: AsyncRead> AsyncReadExt for T { }
+
+pub trait AsyncWriteExt {
+    fn write_all<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b [u8]) -> AsyncWriteAll<'a, 'b, Self> {
+        AsyncWriteAll {
+            this: self,
+            buffer,
+        }
+    }
+}
+
+impl<T: AsyncWrite> AsyncWriteExt for T { }
+
+pub trait AsyncSynchronousExt {
+    fn read_write_all<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b mut [u8]) -> AsyncReadWriteAll<'a, 'b, Self> {
+        AsyncReadWriteAll {
+            this: self,
+            buffer,
+        }
+    }
+}
+
+impl<T: AsyncSynchronous> AsyncSynchronousExt for T { }
 
 trait BufferSlice {
     fn len(&self) -> usize;

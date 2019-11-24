@@ -17,6 +17,14 @@ mod hash_stream;
 #[cfg(feature = "hash-stream")]
 pub use hash_stream::*;
 
+pub mod prelude {
+    #[cfg(feature = "sync")]
+    pub use super::sync_traits::prelude::*;
+
+    #[cfg(feature = "async")]
+    pub use super::async_traits::prelude::*;
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Sink;
 
