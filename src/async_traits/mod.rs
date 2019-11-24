@@ -1,3 +1,4 @@
+use core::convert;
 use core::task::{Context, Poll};
 use core::pin::Pin;
 
@@ -20,6 +21,36 @@ pub trait AsyncSynchronous {
     type Error;
 
     fn poll_read_write(self: Pin<&mut Self>, context: &mut Context, buffer: &mut [u8]) -> Poll<Result<usize, Self::Error>>;
+}
+
+impl AsyncRead for &'_ [u8] {
+    type Error = convert::Infallible;
+
+    #[inline]
+    fn poll_read(self: Pin<&mut Self>, _: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
+        let this = self.get_mut();
+        Poll::Ready(Ok(crate::slice_read(this, buf)))
+    }
+}
+
+impl AsyncWrite for &'_ mut [u8] {
+    type Error = crate::AllError<convert::Infallible>;
+
+    #[inline]
+    fn poll_write(self: Pin<&mut Self>, _: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
+        let this = self.get_mut();
+        Poll::Ready(crate::slice_write(this, buf))
+    }
+
+    #[inline]
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    #[inline]
+    fn poll_close(self: Pin<&mut Self>, _: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
 }
 
 // TODO consider compat structs with pinned reference for borrowing rather than owning?

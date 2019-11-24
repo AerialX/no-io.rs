@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use core::fmt;
+use core::{fmt, cmp, convert};
 
 #[cfg(feature = "sync")]
 mod sync_traits;
@@ -44,5 +44,31 @@ impl<E: Error + 'static> Error for AllError<E> {
             AllError::Io(e) => Some(e),
             _ => None,
         }
+    }
+}
+
+fn slice_read(this: &mut &[u8], buf: &mut [u8]) -> usize {
+    let len = cmp::min(buf.len(), this.len());
+    unsafe {
+        buf.get_unchecked_mut(..len).copy_from_slice(this.get_unchecked(..len));
+        *this = this.get_unchecked(len..);
+    }
+    len
+}
+
+fn slice_write(this: &mut &mut [u8], buf: &[u8]) -> Result<usize, AllError<convert::Infallible>> {
+    let len = cmp::min(buf.len(), this.len());
+    if len == 0 {
+        match buf.is_empty() {
+            true => Ok(0),
+            false => Err(AllError::UnexpectedEof),
+        }
+    } else {
+        let next = core::mem::replace(this, &mut []);
+        unsafe {
+            next.get_unchecked_mut(..len).copy_from_slice(buf.get_unchecked(..len));
+            *this = next.get_unchecked_mut(len..);
+        }
+        Ok(len)
     }
 }

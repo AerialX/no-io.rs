@@ -1,4 +1,4 @@
-use core::{fmt, cmp, convert};
+use core::{fmt, convert};
 use super::AllError;
 
 pub enum WriteFmtError<E> {
@@ -43,13 +43,9 @@ impl<T: Read> Read for &'_ mut T {
 impl Read for &'_ [u8] {
     type Error = convert::Infallible;
 
+    #[inline]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        let len = cmp::min(buf.len(), self.len());
-        unsafe {
-            buf.get_unchecked_mut(..len).copy_from_slice(self.get_unchecked(..len));
-            *self = self.get_unchecked(len..);
-        }
-        Ok(len)
+        Ok(crate::slice_read(self, buf))
     }
 }
 
@@ -123,21 +119,9 @@ impl<T: Write> Write for &'_ mut T {
 impl Write for &'_ mut [u8] {
     type Error = AllError<convert::Infallible>;
 
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        let len = cmp::min(buf.len(), self.len());
-        if len == 0 {
-            match buf.is_empty() {
-                true => Ok(0),
-                false => Err(AllError::UnexpectedEof),
-            }
-        } else {
-            let this = core::mem::replace(self, &mut []);
-            unsafe {
-                this.get_unchecked_mut(..len).copy_from_slice(buf.get_unchecked(..len));
-                *self = this.get_unchecked_mut(len..);
-            }
-            Ok(len)
-        }
+        crate::slice_write(self, buf)
     }
 
     #[inline]
