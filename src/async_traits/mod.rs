@@ -137,6 +137,15 @@ impl AsyncWrite for crate::Sink {
     }
 }
 
+impl AsyncRead for crate::Empty {
+    type Error = Infallible;
+
+    #[inline]
+    fn poll_read(self: Pin<&mut Self>, _: &mut Context, _: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
+        Poll::Ready(Ok(0))
+    }
+}
+
 // TODO consider compat structs with pinned reference for borrowing rather than owning?
 
 #[cfg(feature = "tokio-io")]

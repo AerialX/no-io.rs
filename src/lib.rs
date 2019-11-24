@@ -28,6 +28,9 @@ pub mod prelude {
 #[derive(Debug, Copy, Clone)]
 pub struct Sink;
 
+#[derive(Debug, Copy, Clone)]
+pub struct Empty;
+
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum AllError<E> {
     UnexpectedEof,

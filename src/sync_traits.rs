@@ -148,6 +148,15 @@ impl Write for crate::Sink {
     }
 }
 
+impl Read for crate::Empty {
+    type Error = convert::Infallible;
+
+    #[inline]
+    fn read(&mut self, _: &mut [u8]) -> Result<usize, Self::Error> {
+        Ok(0)
+    }
+}
+
 // TODO: figure out how to impl std::io traits ughh why is rust so bad
 
 #[cfg(feature = "std")]
