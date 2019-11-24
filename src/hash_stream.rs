@@ -25,10 +25,11 @@ mod sync_impl {
         type Error = S::Error;
 
         fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-            let res = self.stream.read(buf)?;
-            // TODO: unchecked
-            self.hasher.write(&buf[..res]);
-            Ok(res)
+            let res = self.stream.read(buf);
+            if let Ok(len) = &res {
+                self.hasher.write(unsafe { buf.get_unchecked(..*len) });
+            }
+            res
         }
     }
 
@@ -36,10 +37,11 @@ mod sync_impl {
         type Error = S::Error;
 
         fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-            let res = self.stream.write(buf)?;
-            // TODO: unchecked
-            self.hasher.write(&buf[..res]);
-            Ok(res)
+            let res = self.stream.write(buf);
+            if let Ok(len) = &res {
+                self.hasher.write(unsafe { buf.get_unchecked(..*len) })
+            }
+            res
         }
 
         #[inline]
@@ -62,14 +64,12 @@ mod async_impl {
         fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
             let this = unsafe { self.get_unchecked_mut() };
             let stream = unsafe { Pin::new_unchecked(&mut this.stream) };
-            match stream.poll_read(cx, buf) {
-                Poll::Ready(Ok(res)) => {
-                    // TODO: unchecked
-                    this.hasher.write(&buf[..res]);
-                    Poll::Ready(Ok(res))
-                },
-                res => res,
+            let res = stream.poll_read(cx, buf);
+            if let Poll::Ready(Ok(len)) = &res {
+                this.hasher.write(unsafe { buf.get_unchecked(..*len) });
             }
+
+            res
         }
     }
 
@@ -79,14 +79,11 @@ mod async_impl {
         fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
             let this = unsafe { self.get_unchecked_mut() };
             let stream = unsafe { Pin::new_unchecked(&mut this.stream) };
-            match stream.poll_write(cx, buf) {
-                Poll::Ready(Ok(res)) => {
-                    // TODO: unchecked
-                    this.hasher.write(&buf[..res]);
-                    Poll::Ready(Ok(res))
-                },
-                res => res,
+            let res = stream.poll_write(cx, buf);
+            if let Poll::Ready(Ok(len)) = &res {
+                    this.hasher.write(unsafe { buf.get_unchecked(..*len) })
             }
+            res
         }
 
         #[inline]
