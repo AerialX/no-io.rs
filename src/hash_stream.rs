@@ -81,7 +81,7 @@ mod async_impl {
             let stream = unsafe { Pin::new_unchecked(&mut this.stream) };
             let res = stream.poll_write(cx, buf);
             if let Poll::Ready(Ok(len)) = &res {
-                    this.hasher.write(unsafe { buf.get_unchecked(..*len) })
+                this.hasher.write(unsafe { buf.get_unchecked(..*len) })
             }
             res
         }
