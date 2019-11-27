@@ -39,7 +39,7 @@ mod sync_impl {
         fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
             let res = self.stream.write(buf);
             if let Ok(len) = &res {
-                self.hasher.write(unsafe { buf.get_unchecked(..*len) })
+                self.hasher.write(unsafe { buf.get_unchecked(..*len) });
             }
             res
         }
@@ -81,7 +81,7 @@ mod async_impl {
             let stream = unsafe { Pin::new_unchecked(&mut this.stream) };
             let res = stream.poll_write(cx, buf);
             if let Poll::Ready(Ok(len)) = &res {
-                this.hasher.write(unsafe { buf.get_unchecked(..*len) })
+                this.hasher.write(unsafe { buf.get_unchecked(..*len) });
             }
             res
         }
