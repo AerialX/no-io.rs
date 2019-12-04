@@ -10,6 +10,7 @@ pub struct AsyncCopy<'a, 'b, R: ?Sized, W: ?Sized, E> {
     buffer: [u8; 0x10],
     buffer_read: usize,
     buffer_write: usize,
+    total: usize,
     eof: bool,
     _err: PhantomData<fn() -> E>,
 }
@@ -22,6 +23,7 @@ impl<'a, 'b, R: ?Sized, W: ?Sized, E> AsyncCopy<'a, 'b, R, W, E> {
             buffer: Default::default(),
             buffer_read: 0,
             buffer_write: 0,
+            total: 0,
             eof: false,
             _err: PhantomData,
         }
@@ -75,6 +77,7 @@ impl<'a, 'b, R: ?Sized + super::AsyncRead, W: ?Sized + super::AsyncWrite, E: Fro
             Poll::Ready(0) => Err(AllError::UnexpectedEof),
             Poll::Ready(len) => {
                 self.buffer_write += len;
+                self.total += len;
                 self.shuffle(); // TODO: only do this when buffer is full?
                 Ok(State::Ready)
             },
@@ -89,7 +92,7 @@ impl<'a, 'b, R: ?Sized + super::AsyncRead, W: ?Sized + super::AsyncWrite, E: Fro
 }
 
 impl<'a, 'b, R: ?Sized + super::AsyncRead, W: ?Sized + super::AsyncWrite, E: From<R::Error> + From<W::Error>> Future for AsyncCopy<'a, 'b, R, W, E> {
-    type Output = Result<(), AllError<E>>;
+    type Output = Result<usize, AllError<E>>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let s = self.as_mut().get_mut();
@@ -99,7 +102,7 @@ impl<'a, 'b, R: ?Sized + super::AsyncRead, W: ?Sized + super::AsyncWrite, E: Fro
 
             match (read, write) {
                 (_, State::Eof) =>
-                    break Poll::Ready(Ok(())),
+                    break Poll::Ready(Ok(self.total)),
                 (_, State::Pending) | (State::Pending, State::Buffer) =>
                     break Poll::Pending,
                 #[cfg(debug_assertions)]
