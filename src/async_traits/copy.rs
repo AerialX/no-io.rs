@@ -2,6 +2,7 @@ use core::future::Future;
 use core::task::{Context, Poll};
 use core::pin::Pin;
 use core::marker::PhantomData;
+use unchecked_ops::*;
 use crate::AllError;
 
 pub struct AsyncCopy<'a, 'b, R: ?Sized, W: ?Sized, E> {
@@ -56,7 +57,10 @@ impl<'a, 'b, R: ?Sized + super::AsyncRead, W: ?Sized + super::AsyncWrite, E: Fro
                 Ok(State::Eof)
             },
             Poll::Ready(len) => {
-                self.buffer_read += len;
+                unsafe {
+                    debug_assert!(len <= buffer.len());
+                    self.buffer_read = self.buffer_read.unchecked_add(len);
+                }
                 Ok(State::Ready)
             },
         }
@@ -76,8 +80,11 @@ impl<'a, 'b, R: ?Sized + super::AsyncRead, W: ?Sized + super::AsyncWrite, E: Fro
             Poll::Pending => Ok(State::Pending),
             Poll::Ready(0) => Err(AllError::UnexpectedEof),
             Poll::Ready(len) => {
-                self.buffer_write += len;
-                self.total += len;
+                unsafe {
+                    debug_assert!(len <= buffer.len());
+                    self.buffer_write = self.buffer_write.unchecked_add(len);
+                }
+                self.total = self.total.saturating_add(len);
                 self.shuffle(); // TODO: only do this when buffer is full?
                 Ok(State::Ready)
             },
@@ -86,7 +93,9 @@ impl<'a, 'b, R: ?Sized + super::AsyncRead, W: ?Sized + super::AsyncWrite, E: Fro
 
     fn shuffle(&mut self) {
         self.buffer.copy_within(self.buffer_write..self.buffer_read, 0);
-        self.buffer_read -= self.buffer_write;
+        unsafe {
+            self.buffer_read = self.buffer_read.unchecked_sub(self.buffer_write);
+        }
         self.buffer_write = 0;
     }
 }
