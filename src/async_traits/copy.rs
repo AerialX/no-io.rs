@@ -32,6 +32,7 @@ impl<'a, 'b, R: ?Sized, W: ?Sized, E> AsyncCopy<'a, 'b, R, W, E> {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 enum State {
     Pending,
     Eof,

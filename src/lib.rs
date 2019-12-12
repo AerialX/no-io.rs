@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::{fmt, cmp, convert};
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
 
 #[cfg(feature = "sync")]
 mod sync_traits;
@@ -26,12 +28,15 @@ pub mod prelude {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 pub struct Sink;
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 pub struct Empty;
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 pub struct Take<S> {
     stream: S,
     limit: usize,
@@ -55,6 +60,7 @@ impl<S> Take<S> {
 }
 
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 pub enum AllError<E> {
     UnexpectedEof,
     Io(E),
@@ -70,18 +76,44 @@ impl<E> From<E> for AllError<E> {
 impl<E: fmt::Display> fmt::Display for AllError<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AllError::UnexpectedEof => write!(f, "Unexpected EOF"),
+            AllError::UnexpectedEof => f.write_str("Unexpected EOF"),
             AllError::Io(e) => fmt::Display::fmt(e, f),
         }
     }
 }
 
-#[cfg(feature = "std")]
-use std::error::Error;
+#[cfg(feature = "ufmt")]
+impl<E: ufmt::uDisplay> ufmt::uDisplay for AllError<E> {
+    fn fmt<W: ?Sized + ufmt::uWrite>(&self, f: &mut ufmt::Formatter<W>) -> Result<(), W::Error> {
+        match self {
+            AllError::UnexpectedEof => f.write_str("Unexpected EOF"),
+            AllError::Io(e) => ufmt::uDisplay::fmt(e, f),
+        }
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[cfg(feature = "ufmt")]
+pub struct uWriter<W: ?Sized> {
+    inner: W,
+}
+
+#[cfg(feature = "ufmt")]
+impl<W> uWriter<W> {
+    pub fn new(inner: W) -> Self {
+        Self {
+            inner,
+        }
+    }
+
+    pub fn into_inner(self) -> W {
+        self.inner
+    }
+}
 
 #[cfg(feature = "std")]
-impl<E: Error + 'static> Error for AllError<E> {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+impl<E: StdError + 'static> StdError for AllError<E> {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             AllError::Io(e) => Some(e),
             _ => None,

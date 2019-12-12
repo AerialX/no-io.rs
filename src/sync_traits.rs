@@ -1,6 +1,8 @@
 use core::fmt;
 use core::convert::Infallible;
 use super::{AllError, Take};
+#[cfg(feature = "ufmt")]
+use super::uWriter;
 
 pub(crate) mod prelude {
     pub use super::{Read, Write};
@@ -113,6 +115,11 @@ pub trait Write {
     fn take(self, limit: usize) -> Take<Self> where Self: Sized {
         Take::new(self, limit)
     }
+
+    #[cfg(feature = "ufmt")]
+    fn uwriter(self) -> uWriter<Self> where Self: Sized {
+        uWriter::new(self)
+    }
 }
 
 impl<T: ?Sized + Write> Write for &'_ mut T {
@@ -153,6 +160,16 @@ impl Write for crate::Sink {
 
     #[inline]
     fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+#[cfg(feature = "ufmt")]
+impl ufmt::uWrite for crate::Sink {
+    type Error = Infallible;
+
+    #[inline]
+    fn write_str(&mut self, _: &str) -> Result<(), Self::Error> {
         Ok(())
     }
 }
@@ -203,6 +220,15 @@ impl<S: Write> Write for Take<S> {
 
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.stream.flush().map_err(From::from)
+    }
+}
+
+#[cfg(feature = "ufmt")]
+impl<W: ?Sized + Write> ufmt::uWrite for uWriter<W> {
+    type Error = W::Error;
+
+    fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+        self.inner.write_all(s.as_bytes())
     }
 }
 
