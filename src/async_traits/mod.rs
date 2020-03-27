@@ -372,6 +372,9 @@ pub use read_write_all::*;
 mod copy;
 pub use copy::*;
 
+mod flush;
+pub use flush::*;
+
 pub trait AsyncReadExt: AsyncRead {
     fn read_exact<'a, 'b>(self: Pin<&'a mut Self>, buffer: &'b mut [u8]) -> AsyncReadExact<'a, 'b, Self> {
         AsyncReadExact {
@@ -405,6 +408,10 @@ pub trait AsyncWriteExt: AsyncWrite {
 
     fn take(self, limit: usize) -> Take<Self> where Self: Sized {
         Take::new(self, limit)
+    }
+
+    fn flush<'a>(self: Pin<&'a mut Self>) -> AsyncFlush<'a, Self> {
+        AsyncFlush::new(self)
     }
 }
 
