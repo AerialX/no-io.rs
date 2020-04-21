@@ -147,6 +147,18 @@ impl AsyncRead for crate::Empty {
     }
 }
 
+impl AsyncRead for crate::Repeat {
+    type Error = Infallible;
+
+    #[inline]
+    fn poll_read(self: Pin<&mut Self>, _: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
+        for b in &mut *buf {
+            *b = self.0
+        }
+        Poll::Ready(Ok(buf.len()))
+    }
+}
+
 impl<S: AsyncRead> AsyncRead for Take<S> {
     type Error = S::Error;
 

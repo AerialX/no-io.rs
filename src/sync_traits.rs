@@ -183,6 +183,18 @@ impl Read for crate::Empty {
     }
 }
 
+impl Read for crate::Repeat {
+    type Error = Infallible;
+
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        for b in &mut *buf {
+            *b = self.0
+        }
+        Ok(buf.len())
+    }
+}
+
 impl<S: Read> Read for Take<S> {
     type Error = S::Error;
 

@@ -37,6 +37,16 @@ pub struct Empty;
 
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
+pub struct Repeat(u8);
+
+impl Repeat {
+    pub const fn new(value: u8) -> Self {
+        Self(value)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 pub struct Take<S> {
     stream: S,
     limit: usize,
