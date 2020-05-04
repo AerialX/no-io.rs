@@ -5,7 +5,7 @@ use super::{AllError, Take};
 use super::uWriter;
 
 pub(crate) mod prelude {
-    pub use super::{Read, Write};
+    pub use super::{Read, ReadExt, Write, WriteExt};
 }
 
 pub enum WriteFmtError<E> {
@@ -242,6 +242,43 @@ impl<W: ?Sized + Write> ufmt::uWrite for uWriter<W> {
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
         self.inner.write_all(s.as_bytes())
     }
+}
+
+pub trait ReadExt: Read {
+    fn copy_to<W: Write>(&mut self, write: W) -> Result<usize, Self::Error> where Self::Error: From<W::Error> {
+        copy(self, write)
+    }
+}
+
+impl<T: ?Sized + Read> ReadExt for T { }
+
+pub trait WriteExt: Write {
+    fn copy_from<R: Read>(&mut self, read: R) -> Result<usize, Self::Error> where Self::Error: From<R::Error> {
+        copy(read, self)
+    }
+}
+
+impl<T: ?Sized + Write> WriteExt for T { }
+
+pub fn copy<R: Read, W: Write, E>(mut read: R, mut write: W) -> Result<usize, E> where E: From<R::Error> + From<W::Error> {
+    let mut buf = [0u8; 0x10];
+    let mut total = 0usize;
+    loop {
+        let len = match read.read(&mut buf) {
+            // TODO? Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(e) => return Err(e.into()),
+            Ok(0) => break,
+            Ok(len) => len,
+        };
+        let buf = unsafe {
+            debug_assert!(len <= buf.len());
+            buf.get_unchecked(..len)
+        };
+        write.write_all(&buf)?;
+        total = total.saturating_add(len);
+    }
+
+    Ok(total)
 }
 
 // TODO: figure out how to impl std::io traits ughh why is rust so bad
