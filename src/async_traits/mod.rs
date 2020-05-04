@@ -119,6 +119,36 @@ impl<P: DerefMut<Target=T> + Unpin, T: ?Sized + AsyncWrite> AsyncWrite for Pin<P
     }
 }
 
+#[cfg(feature = "std")]
+impl<T: ?Sized + AsyncRead + Unpin> AsyncRead for Box<T> {
+    type Error = T::Error;
+
+    #[inline]
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
+        Pin::new(&mut **self).poll_read(cx, buf)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: ?Sized + AsyncWrite + Unpin> AsyncWrite for Box<T> {
+    type Error = T::Error;
+
+    #[inline]
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<Result<usize, Self::Error>> {
+        Pin::new(&mut **self).poll_write(cx, buf)
+    }
+
+    #[inline]
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut **self).poll_flush(cx)
+    }
+
+    #[inline]
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut **self).poll_close(cx)
+    }
+}
+
 impl AsyncWrite for crate::Sink {
     type Error = Infallible;
 
