@@ -8,11 +8,6 @@ pub(crate) mod prelude {
     pub use super::{Read, ReadExt, Write, WriteExt};
 }
 
-pub enum WriteFmtError<E> {
-    FormatterError,
-    Io(E),
-}
-
 // TODO: pull the provided fns out into extension traits instead?
 
 pub trait Read {
@@ -279,6 +274,31 @@ pub fn copy<R: Read, W: Write, E>(mut read: R, mut write: W) -> Result<usize, E>
     }
 
     Ok(total)
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum WriteFmtError<E> {
+    FormatterError,
+    Io(E),
+}
+
+impl<E: fmt::Display> fmt::Display for WriteFmtError<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            WriteFmtError::FormatterError => write!(f, "formatter error"),
+            WriteFmtError::Io(err) => err.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<E: std::error::Error + 'static> std::error::Error for WriteFmtError<E> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            WriteFmtError::FormatterError => None,
+            WriteFmtError::Io(err) => Some(err)
+        }
+    }
 }
 
 // TODO: figure out how to impl std::io traits ughh why is rust so bad
