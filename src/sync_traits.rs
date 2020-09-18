@@ -301,8 +301,6 @@ impl<E: std::error::Error + 'static> std::error::Error for WriteFmtError<E> {
     }
 }
 
-// TODO: figure out how to impl std::io traits ughh why is rust so bad
-
 #[cfg(feature = "std")]
 mod std_impl {
     use std::io::{Read, Write, Error, ErrorKind};
@@ -339,6 +337,32 @@ mod std_impl {
         #[inline]
         fn flush(&mut self) -> Result<(), Self::Error> {
             self.inner_mut().flush()
+        }
+    }
+
+    impl<T: ?Sized + super::Read> io::Read for StdCompat<T> where
+        T::Error: Into<io::Error>,
+    {
+        #[inline]
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            self.inner_mut().read(buf)
+                .map_err(Into::into)
+        }
+    }
+
+    impl<T: ?Sized + super::Write> io::Write for StdCompat<T> where
+        T::Error: Into<io::Error>,
+    {
+        #[inline]
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.inner_mut().write(buf)
+                .map_err(Into::into)
+        }
+
+        #[inline]
+        fn flush(&mut self) -> io::Result<()> {
+            self.inner_mut().flush()
+                .map_err(Into::into)
         }
     }
 }
