@@ -340,27 +340,27 @@ mod std_impl {
         }
     }
 
-    impl<T: ?Sized + super::Read> io::Read for StdCompat<T> where
-        T::Error: Into<io::Error>,
+    impl<T: ?Sized + super::Read> Read for StdCompat<T> where
+        T::Error: Into<Error>,
     {
         #[inline]
-        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
             self.inner_mut().read(buf)
                 .map_err(Into::into)
         }
     }
 
-    impl<T: ?Sized + super::Write> io::Write for StdCompat<T> where
-        T::Error: Into<io::Error>,
+    impl<T: ?Sized + super::Write> Write for StdCompat<T> where
+        T::Error: Into<Error>,
     {
         #[inline]
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
             self.inner_mut().write(buf)
                 .map_err(Into::into)
         }
 
         #[inline]
-        fn flush(&mut self) -> io::Result<()> {
+        fn flush(&mut self) -> Result<(), Error> {
             self.inner_mut().flush()
                 .map_err(Into::into)
         }

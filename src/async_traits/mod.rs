@@ -265,8 +265,7 @@ mod tokio_impl {
         #[inline]
         pub fn inner_pin(self: Pin<&mut Self>) -> Pin<&mut T> {
             unsafe {
-                let this = self.get_unchecked_mut();
-                Pin::new_unchecked(&mut this.0)
+                self.map_unchecked_mut(|this| &mut this.0)
             }
         }
     }
