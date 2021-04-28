@@ -249,15 +249,12 @@ impl<S: AsyncWrite> AsyncWrite for Take<S> {
 
 // TODO consider compat structs with pinned reference for borrowing rather than owning?
 
-#[cfg(any(feature = "tokio-io", feature = "tokio"))]
+#[cfg(feature = "tokio")]
 mod tokio_impl {
     use core::task::{Context, Poll};
     use core::pin::Pin;
     use std::io::Error;
-    #[cfg(feature = "tokio-io")]
-    use tokio_io::{AsyncRead, AsyncWrite};
-    #[cfg(feature = "tokio")]
-    use tokio::io::{AsyncRead, AsyncWrite};
+    use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
     pub struct TokioCompat<T: ?Sized>(pub T);
 
@@ -275,14 +272,18 @@ mod tokio_impl {
 
         #[inline]
         fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Self::Error>> {
-            self.inner_pin().poll_read(cx, buf)
+            let mut buf = ReadBuf::new(buf);
+            self.inner_pin().poll_read(cx, &mut buf)
+                .map_ok(|()| buf.filled().len())
         }
     }
 
     impl<T: ?Sized + super::AsyncRead<Error=E>, E: Into<Error>> AsyncRead for TokioCompat<T> {
         #[inline]
-        fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<Result<usize, Error>> {
-            self.inner_pin().poll_read(cx, buf).map_err(Into::into)
+        fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut ReadBuf) -> Poll<Result<(), Error>> {
+            self.inner_pin().poll_read(cx, buf.initialize_unfilled())
+                .map_ok(|n| buf.advance(n))
+                .map_err(Into::into)
         }
     }
 
@@ -323,7 +324,7 @@ mod tokio_impl {
     }
 }
 
-#[cfg(any(feature = "tokio-io", feature = "tokio"))]
+#[cfg(feature = "tokio")]
 pub use tokio_impl::TokioCompat;
 
 #[cfg(feature = "futures-io")]
